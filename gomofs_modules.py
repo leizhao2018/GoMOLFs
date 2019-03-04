@@ -39,11 +39,11 @@ def get_gomofs_url(date,data_str):
 
 def get_gomofs(time,lat,lon,depth,mindistance=20):
     """
+    the time start in 2016-11-09 00:00:00
     the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
     if the depth is under the water, please must add the marker of '-'
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
-    
     return the temperature of specify location
     """
     
