@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def get_gomofs_url(date):
+def get_gomofs_url(date,data_str):
     """
     the format of date is:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     input date and return the url of data
@@ -30,23 +30,32 @@ def get_gomofs_url(date):
     date_ymdh=date.strftime('%Y%m%d%H')
     ym=date_ymdh[:6]
     ymd=date_ymdh[:8]
-    hour=date_ymdh[8:10]
+    hour=str(int(int(date_ymdh[8:10])/6)*6)
+    if len(hour)==1:
+        hour='0'+hour
     url='http://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
-    +ym+'/nos.gomofs.stations.forecast.'+ymd+'.t'+hour+'z.nc'
+    +ym+'/nos.gomofs.stations.'+data_str+'.'+ymd+'.t'+hour+'z.nc'
+    
+    print(url)
     return url
 
 def get_gomofs(time,lat,lon,depth):
     """
     the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
-    lat and lon use decimal degrees,minutes
+    lat and lon use decimal degrees
     if the depth is under the water, please must add the marker of '-'
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
+    
+    return the temperature of specify location
     """
     
-    url=get_gomofs_url(time)  #get the url
-    # upload the data 
     try:
-        nc=netCDF4.Dataset(str(url))
+        try:
+            url=get_gomofs_url(time,'nowcast')
+            nc=netCDF4.Dataset(str(url))
+        except:
+            url=get_gomofs_url(time,'forecast')
+            nc=netCDF4.Dataset(str(url))
     except:
         print('please check the website or internet!')
     gomofs_lons=nc.variables['lon_rho'][:]
