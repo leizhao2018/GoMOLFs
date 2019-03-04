@@ -35,8 +35,6 @@ def get_gomofs_url(date,data_str):
         hour='0'+hour
     url='http://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
     +ym+'/nos.gomofs.stations.'+data_str+'.'+ymd+'.t'+hour+'z.nc'
-    
-    print(url)
     return url
 
 def get_gomofs(time,lat,lon,depth):
