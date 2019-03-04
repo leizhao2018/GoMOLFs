@@ -46,7 +46,9 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
     return the temperature of specify location
     """
-    
+    if time<datetime.datetime.strptime('20161109 000000','%Y%m%d %H%M%S'):
+        print('Time out of range!')
+        sys.exit()
     try:
         try:
             url=get_gomofs_url(time,'nowcast')
@@ -102,7 +104,7 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
         else:
             continue
     if distance0>mindistance:
-        print('The location is out of range')
+        print('The location is out of range!')
         sys.exit()
     # estimate the bottom depth of point location       
     points_h=[[gomofs_lats[location_index],gomofs_lons[location_index],gomofs_h[location_index]],
