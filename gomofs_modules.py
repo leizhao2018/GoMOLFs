@@ -18,7 +18,7 @@ proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
 os.environ["PROJ_LIB"] = proj_lib
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-
+import sys
 import numpy as np
 
 
@@ -37,7 +37,7 @@ def get_gomofs_url(date,data_str):
     +ym+'/nos.gomofs.stations.'+data_str+'.'+ymd+'.t'+hour+'z.nc'
     return url
 
-def get_gomofs(time,lat,lon,depth):
+def get_gomofs(time,lat,lon,depth,mindistance=20):
     """
     the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
@@ -101,6 +101,9 @@ def get_gomofs(time,lat,lon,depth):
             location_index3=j
         else:
             continue
+    if distance0>mindistance:
+        print('The location is out of range')
+        sys.exit()
     # estimate the bottom depth of point location       
     points_h=[[gomofs_lats[location_index],gomofs_lons[location_index],gomofs_h[location_index]],
              [gomofs_lats[location_index1],gomofs_lons[location_index1],gomofs_h[location_index1]],
