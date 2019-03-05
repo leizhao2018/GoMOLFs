@@ -131,7 +131,7 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     if depth!='bottom':
         if abs(point_h)<abs(depth):
             print ("the depth is out of the bottom:"+str(point_h))
-            temperature=9999
+            sys.exit()
     return temperature,nc,rho_index,eta_rho,xi_rho
  #   return temperature
 
