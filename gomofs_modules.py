@@ -28,12 +28,14 @@ def get_gomofs_url(date):
     the format of date is:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     input date and return the url of data
     """
+    
     print('start calculate the url!') 
-    date=date+datetime.timedelta(hours=4.5)
-    date_ymdh=date.strftime('%Y%m%d%H%M%S')
-    ym=date_ymdh[:6]
-    ymd=date_ymdh[:8]
-    hours=int(date_ymdh[8:10])+int(date_ymdh[10:12])/60.+int(date_ymdh[12:14])/3600.
+    #below is a method to calculate this part of string in url('/201902/nos.gomofs.fields.n006.20190227.t12z.nc')
+    date=date+datetime.timedelta(hours=4.5) #4.5 is a parameter use to get the correct time string("n003","t12") 
+    date_ymdh=date.strftime('%Y%m%d%H%M%S')  #timestring,include year,month, day, hour, minetes, seconds
+    ym=date_ymdh[:6]   #timestring,include year,month
+    ymd=date_ymdh[:8] #timestring,include year,month,day,hour
+    hours=int(date_ymdh[8:10])+int(date_ymdh[10:12])/60.+int(date_ymdh[12:14])/3600.  #hours,mintes,seconds change to hours  for examole: 1 h 30 min 0 sec=1.5h
     t=math.floor((hours)/6.0)*6
     if len(str(t))==1:
         tstr='t0'+str(t)+'z'
@@ -56,9 +58,11 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     
     return the temperature of specify location
     """
+    #the data start time is '2018-07-01 00:00:00'
     if time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range')
         sys.exit()
+    #upload the data
     try:
         url=get_gomofs_url(time)
         print('calculate the url finished!')
