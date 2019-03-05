@@ -28,20 +28,17 @@ def get_gomofs_url(date):
     the format of date is:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     input date and return the url of data
     """
+    print('start calculate the url!') 
     date=date+datetime.timedelta(hours=4.5)
     date_ymdh=date.strftime('%Y%m%d%H%M%S')
     ym=date_ymdh[:6]
     ymd=date_ymdh[:8]
-    hour=int(date_ymdh[8:10])
-    minetes=int(date_ymdh[10:12])
-    seconds=int(date_ymdh[12:14])
-    hours=hour+minetes/60.+seconds/3600.
+    hours=int(date_ymdh[8:10])+int(date_ymdh[10:12])/60.+int(date_ymdh[12:14])/3600.
     t=math.floor((hours)/6.0)*6
-    tstr=str(t)
-    if len(tstr)==1:
-        tstr='t0'+tstr+'z'
+    if len(str(t))==1:
+        tstr='t0'+str(t)+'z'
     else:
-        tstr='t'+tstr+'z'
+        tstr='t'+str(t)+'z'
     if round((hours)/3.0-1.5,0)==t/3:
         nstr='n006'
     else:
@@ -64,6 +61,7 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
         sys.exit()
     try:
         url=get_gomofs_url(time)
+        print('calculate the url finished!')
         nc=netCDF4.Dataset(str(url))
     except:
         print('please check the website or internet!')
