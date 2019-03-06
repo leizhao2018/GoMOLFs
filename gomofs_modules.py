@@ -3,6 +3,7 @@
 """
 Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
+update th method of calculate the nearest point in get_gomofs
 @author: leizhao
 """
 import netCDF4
@@ -212,7 +213,7 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
             check=0
             count=count+1
             print('start '+str(count)+' times add arcgisimage!')
-
+    # draw parallels
     parallels = np.arange(0.,90.,3)
     map2.drawparallels(parallels,labels=[0,1,0,0],fontsize=10,linewidth=0.0)
     # draw meridians
@@ -222,17 +223,4 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     ax2.plot(x2,y2,'ro')
     plt.savefig(output_path+'contour_depth_tem_GoMOFs.png',dpi=300)
     plt.show()
-
-
-
-
-output_path='/home/jmanning/Desktop/'
-date_time=datetime.datetime.strptime('20190303 185451','%Y%m%d %H%M%S')
-interval=[20,50,100,150,200,500]
-countour_depth_temp_gomfs(output_path,date_time,lat=41,lon=-69,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=interval)
-
-
-
-    
-
 
