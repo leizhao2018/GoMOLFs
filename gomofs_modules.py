@@ -49,7 +49,7 @@ def get_gomofs_url(date):
     +ym+'/nos.gomofs.fields.'+nstr+'.'+ymd+'.'+tstr+'.nc'
     return url
 
-def get_gomofs(time,lat,lon,depth,mindistance=20):
+def get_gomofs(date_time,lat,lon,depth,mindistance=20):
     """
     the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
@@ -59,7 +59,7 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     return the temperature of specify location
     """
     #the data start time is '2018-07-01 00:00:00'
-    if time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
+    if date_time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range')
         sys.exit()
         
@@ -68,7 +68,7 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     check,count=0,1
     while(check==0):  #upload the data, if upload failed, re_upload several times
         try:
-            url=get_gomofs_url(time)
+            url=get_gomofs_url(date_time)
             print('calculate the url finished!')
             nc=netCDF4.Dataset(str(url))
             gomofs_lons=nc.variables['lon_rho'][:]
