@@ -62,6 +62,31 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     if time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range')
         sys.exit()
+        
+        
+    #start upload data
+    check,count=0,1
+    while(check==0):  #upload the data, if upload failed, re_upload several times
+        try:
+            url=get_gomofs_url(time)
+            print('calculate the url finished!')
+            nc=netCDF4.Dataset(str(url))
+            gomofs_lons=nc.variables['lon_rho'][:]
+            gomofs_lats=nc.variables['lat_rho'][:]
+            gomofs_temp=nc.variables['temp'][:]
+            gomofs_h=nc.variables['h'][:]
+            gomofs_rho=nc.variables['s_rho'][:]
+            check=1    #if upload succeed, end loop 
+        except:
+            time.sleep(30)
+            count=count+1
+            print('the '+str(int(count))+' times to upload data.')
+        if count==5:   #loop five times will end the loop 
+            print('end the loop to upload data, please check the website or file is exist!')
+            sys.exit()
+   
+
+    """
     #upload the data
     try:
         url=get_gomofs_url(time)
@@ -74,7 +99,8 @@ def get_gomofs(time,lat,lon,depth,mindistance=20):
     gomofs_temp=nc.variables['temp'][:]
     gomofs_h=nc.variables['h'][:]
     gomofs_rho=nc.variables['s_rho'][:]
-
+    """
+    
     #caculate the index of the nearest four points    
     print('start caculate the nearest four points!')
     eta_rho,xi_rho=0,0  #specify the initial index of location
@@ -148,13 +174,30 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     mod_points:do you want to post model grid nodes,if mod_points='yes', print model grid nodes;if other string, skip 
     """
+    '''
     #prepare the data
     temperature,nc,rho_index,eta_rho,xi_rho=get_gomofs(date_time,lat,lon,depth)
     gomofs_lons=nc.variables['lon_rho'][:]
     gomofs_lats=nc.variables['lat_rho'][:]
     gomofs_temp=nc.variables['temp'][:]
     gomofs_h=nc.variables['h'][:]
-
+    '''
+    
+    #prepare the data
+    temperature,nc,rho_index,eta_rho,xi_rho=get_gomofs(date_time,lat,lon,depth)
+    check,count=0,0
+    while(check==0):  #upload the data, if upload failed, re_upload several times
+        try:
+            gomofs_lons=nc.variables['lon_rho'][:]
+            gomofs_lats=nc.variables['lat_rho'][:]
+            gomofs_temp=nc.variables['temp'][:]
+            gomofs_h=nc.variables['h'][:]
+            check=1
+        except:
+            time.sleep(30)
+            count=count+1 
+            print('the '+str(int(count))+' times to upload data.')
+    
     #creat map   
     print('start draw map!')   
     #Create a blank canvas
