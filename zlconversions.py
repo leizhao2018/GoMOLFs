@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Sep 14 15:08:40 2018
-
+update in MARCH 6 add a function find_nd(find the index of nearest distance)
 @author: leizhao
 
 directory list in the end
@@ -64,6 +64,41 @@ def find_header_rows(path_name):
             header_rows=i
             break 
     return header_rows
+
+def find_nd(target,lat,lon,lats,lons):
+    
+    """ Bisection method:find the index of nearest distance"""
+    row=0
+    maxrow=len(lats)-1
+    col=len(lats[0])-1
+    while col>=0 and row<=maxrow:
+        distance=dist(lat1=lats[row][col],lat2=lat,lon1=lons[row][col],lon2=lon)
+        if distance<=target:
+            break
+        elif abs(lats[row][col]-lat)<abs(lons[row][col]-lon):
+            col-=1
+        else:
+            row+=1
+    distance=dist(lat1=lats[row][col],lat2=lat,lon1=lons[row][col],lon2=lon)
+    row_md,col_md=row,col  #row_md the row of minimum distance
+    #avoid row,col out of range in next step
+    if row<3:
+        row=3
+    if col<3:
+        col=3
+    if row>maxrow-3:
+        row=maxrow-3
+    if col>len(lats[0])-4:
+        col=len(lats[0])-4
+    for i in range(row-3,row+3,1):
+        for j in range(col-3,col+3,1):
+            distance_c=dist(lat1=lats[i][j],lat2=lat,lon1=lons[i][j],lon2=lon)
+            if distance_c<=distance:
+                distance=distance_c
+                row_md,col_md=i,j
+    return row_md,col_md
+
+
 
 def fitting(point,lat,lon):
     """
