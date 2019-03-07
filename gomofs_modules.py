@@ -3,7 +3,8 @@
 """
 Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
-update th method of calculate the nearest point in get_gomofs
+update function get_gomofs in download data(correct the part name "start upload data" to donload data)
+add a function(get_gomofs_url_forcast(date,forcastdate=1))
 @author: leizhao
 """
 import netCDF4
@@ -28,28 +29,51 @@ def get_gomofs_url(date):
     the format of date is:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     input date and return the url of data
     """
-    print('start calculate the url!') 
+#    print('start calculate the url!') 
     date=date+datetime.timedelta(hours=4.5)
     date_str=date.strftime('%Y%m%d%H%M%S')
-    ym=date_str[:6]
-    ymd=date_str[:8]
     hours=int(date_str[8:10])+int(date_str[10:12])/60.+int(date_str[12:14])/3600.
-    t=int(math.floor((hours)/6.0)*6)
-    if len(str(t))==1:
-        tstr='t0'+str(t)+'z'
+    tn=int(math.floor((hours)/6.0)*6)  ## for examole: t12z the number is 12
+    if len(str(tn))==1:
+        tstr='t0'+str(tn)+'z'   # tstr in url represent hour string :t00z
     else:
-        tstr='t'+str(t)+'z'
-    if round((hours)/3.0-1.5,0)==t/3:
-        nstr='n006'
+        tstr='t'+str(tn)+'z'
+    if round((hours)/3.0-1.5,0)==tn/3:
+        nstr='n006'       # nstr in url represent nowcast string: n003 or n006
     else:
         nstr='n003'
     url='http://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
-    +ym+'/nos.gomofs.fields.'+nstr+'.'+ymd+'.'+tstr+'.nc'
+    +date_str[:6]+'/nos.gomofs.fields.'+nstr+'.'+date_str[:8]+'.'+tstr+'.nc'
+    return url
+
+def get_gomofs_url_forcast(date,forcastdate=True):
+    """
+    the date use to choose file
+    the format of date is GMT TIME:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
+    forcastdate like date or True
+    input date and return the url of data
+    """
+    if forcastdate==True:  #if forcastdate is True: default the forcast date equal to the time of choose file.
+        forcastdate=date
+    date=date-datetime.timedelta(hours=1.5)  #the parameter of calculate txx(eg:t00,t06 and so on)
+    tn=int(math.floor(date.hour/6.0)*6)  #the numer of hours in time index: eg: t12, the number is 12
+    ymdh=date.strftime('%Y%m%d%H%M%S')[:10]  #for example:2019011112(YYYYmmddHH)
+    if len(str(tn))==1:
+        tstr='t0'+str(tn)+'z'  #tstr: for example: t12
+    else:
+        tstr='t'+str(tn)+'z'
+    fnstr=str(3+3*math.floor((forcastdate-datetime.timedelta(hours=1.5+tn)-datetime.datetime.strptime(ymdh[:8],'%Y%m%d')).seconds/3600./3.))#fnstr:the number in forcast index, for example f006 the number is 6
+    if len(fnstr)==1:   
+        fstr='f00'+fnstr  #fstr: forcast index:for example: f006
+    else:
+        fstr='f0'+fnstr
+    url='http://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
+    +ymdh[:6]+'/nos.gomofs.fields.'+fstr+'.'+ymdh[:8]+'.'+tstr+'.nc'
     return url
 
 def get_gomofs(date_time,lat,lon,depth,mindistance=20):
     """
-    the format time is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
+    the format time(GMT) is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
     if the depth is under the water, please must add the marker of '-'
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
@@ -57,27 +81,47 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20):
     return the temperature of specify location
     """
     if date_time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
-        print('Time out of range!')
+        print('Time out of range, time start :2018-07-01 00:00:00z')
         sys.exit()
-    #start upload data
-    check,count=0,1
-    while(check==0):  #upload the data, if upload failed, re_upload several times
+    if date_time>datetime.datetime.now()+datetime.timedelta(days=3): #forecast time under 3 days
+        print('forecast time under 3 days')
+        sys.exit()
+    #start download data
+    forecastdate=date_time
+    filecheck,readcheck,count=1,1,1
+    while(filecheck==1):  #download the data
         try:
             url=get_gomofs_url(date_time)
-            print('calculate the url finished!')
             nc=netCDF4.Dataset(str(url))
+            print('download nowcast data.')
+            filecheck=0
+        except OSError:
+            try:
+                url=get_gomofs_url_forcast(date_time,forecastdate)
+                nc=netCDF4.Dataset(str(url))
+                print('download nowcast data.')
+                filecheck=0
+            except OSError:
+                date_time=date_time-datetime.timedelta(hours=6)
+                if (forecastdate-date_time)>datetime.timedelta(days=3):
+                    print('please check the website or file is exist!')
+                    sys.exit()
+            except:
+                sys.exit()
+        except:
+            sys.exit()
+    while(readcheck==1):  #read data
+        try: 
             gomofs_lons=nc.variables['lon_rho'][:]
             gomofs_lats=nc.variables['lat_rho'][:]
             gomofs_temp=nc.variables['temp'][:]
             gomofs_h=nc.variables['h'][:]
             gomofs_rho=nc.variables['s_rho'][:]
-            check=1    #if upload succeed, end loop 
-        except:
-#            time.sleep(2)
+            readcheck=0
+        except RuntimeError:   
             count=count+1
-            print('the '+str(int(count))+' times to upload data.')
-        if count==5:   #loop five times will end the loop 
-            print('end the loop to upload data, please check the website or file is exist!')
+            print('the '+str(int(count))+' times to read data.')
+        except:
             sys.exit()
 
     #caculate the index of the nearest four points    
@@ -120,12 +164,7 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20):
              [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],gomofs_temp[0][rho_index][eta_rho][xi_rho+1]],
              [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]],
              [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]]]
-    t1=datetime.datetime.now()
-
-
     temperature=zl.fitting(points_temp,lat,lon)
-    t2=datetime.datetime.now()
-    print(t2-t1)
     # if input depth out of the bottom, print the prompt message
     if depth!='bottom':
         if abs(point_h)<abs(depth):
@@ -144,7 +183,6 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     """
     #prepare the data
     temperature,nc,rho_index,eta_rho,xi_rho,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons=get_gomofs(date_time,lat,lon,depth)
-
     #creat map   
     print('start draw map!')   
     #Create a blank canvas
@@ -213,7 +251,7 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
             check=0
             count=count+1
             print('start '+str(count)+' times add arcgisimage!')
-    # draw parallels
+
     parallels = np.arange(0.,90.,3)
     map2.drawparallels(parallels,labels=[0,1,0,0],fontsize=10,linewidth=0.0)
     # draw meridians
@@ -223,4 +261,19 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     ax2.plot(x2,y2,'ro')
     plt.savefig(output_path+'contour_depth_tem_GoMOFs.png',dpi=300)
     plt.show()
+
+
+
+
+output_path='/home/jmanning/Desktop/'
+#date_time=datetime.datetime.strptime('20190303 185451','%Y%m%d %H%M%S')
+date_time=datetime.datetime.now()
+date_time=zl.local2utc(date_time)
+interval=[20,50,100,150,200,500]
+countour_depth_temp_gomfs(output_path,date_time,lat=41.,lon=-69.,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=interval)
+
+
+
+    
+
 
