@@ -263,17 +263,6 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     plt.show()
 
 
-
-
-output_path='/home/jmanning/Desktop/'
-#date_time=datetime.datetime.strptime('20190303 185451','%Y%m%d %H%M%S')
-date_time=datetime.datetime.now()
-date_time=zl.local2utc(date_time)
-interval=[20,50,100,150,200,500]
-countour_depth_temp_gomfs(output_path,date_time,lat=41.,lon=-69.,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=interval)
-
-
-
     
 
 
