@@ -5,6 +5,7 @@ Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
 update function get_gomofs in download data(correct the part name "start upload data" to donload data)
 add a function(get_gomofs_url_forcast(date,forcastdate=1))
+march 13:update function get_gomofs in download data
 @author: leizhao
 """
 import netCDF4
