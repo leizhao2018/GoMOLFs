@@ -18,7 +18,6 @@ proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
 os.environ["PROJ_LIB"] = proj_lib
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-import sys
 import numpy as np
 import math
 import time
@@ -71,7 +70,7 @@ def get_gomofs_url_forcast(date,forcastdate=True):
     +ymdh[:6]+'/nos.gomofs.fields.'+fstr+'.'+ymdh[:8]+'.'+tstr+'.nc'
     return url
 
-def get_gomofs(date_time,lat,lon,depth,mindistance=20):
+def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours=False):
     """
     the format time(GMT) is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
@@ -82,47 +81,79 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20):
     """
     if date_time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range, time start :2018-07-01 00:00:00z')
-        sys.exit()
+        return np.nan
     if date_time>datetime.datetime.now()+datetime.timedelta(days=3): #forecast time under 3 days
         print('forecast time under 3 days')
-        sys.exit()
+        return np.nan
+   
     #start download data
-    forecastdate=date_time
-    filecheck,readcheck,count=1,1,1
-    while(filecheck==1):  #download the data
-        try:
-            url=get_gomofs_url(date_time)
-            nc=netCDF4.Dataset(str(url))
-            print('download nowcast data.')
-            filecheck=0
-        except OSError:
+    forecastdate=date_time  #forecast time equal input date_time
+    changefile,filecheck=1,1  #changefile means whether we need to change the file to get data, filecheck means check the file exist or not.
+
+    while(changefile==1):  
+        count=1
+        while(filecheck==1):  #download the data
             try:
-                url=get_gomofs_url_forcast(date_time,forecastdate)
-                nc=netCDF4.Dataset(str(url))
-                print('download nowcast data.')
-                filecheck=0
+                if forecastdate==date_time:   #the forcastdate is input date_time, if the date_time changed yet,we will use the forecast data
+                    url=get_gomofs_url(date_time)
+                    nc=netCDF4.Dataset(str(url))
+                    print('download nowcast data.')
+                else:
+                    url=get_gomofs_url_forcast(date_time,forecastdate)
+                    nc=netCDF4.Dataset(str(url))
+                    print('download forecast data.')
+                filecheck,readcheck=0,1      # if the file is there, filecheck=0,readcheck use to check the file whether read successfully               
             except OSError:
-                date_time=date_time-datetime.timedelta(hours=6)
-                if (forecastdate-date_time)>datetime.timedelta(days=3):
-                    print('please check the website or file is exist!')
-                    sys.exit()
+                try:
+                    url=get_gomofs_url_forcast(date_time,forecastdate)
+                    nc=netCDF4.Dataset(str(url))
+                    print('download forecast data.')
+                    filecheck,readcheck=0,1  
+                except OSError:
+                    date_time=date_time-datetime.timedelta(hours=6)
+                    if (forecastdate-date_time)>datetime.timedelta(days=3):  #every file only have 3 days data.
+                        print('please check the website or file is exist!')
+                        return np.nan
+                except:
+                    return np.nan
             except:
-                sys.exit()
-        except:
-            sys.exit()
-    while(readcheck==1):  #read data
-        try: 
-            gomofs_lons=nc.variables['lon_rho'][:]
-            gomofs_lats=nc.variables['lat_rho'][:]
-            gomofs_temp=nc.variables['temp'][:]
-            gomofs_h=nc.variables['h'][:]
-            gomofs_rho=nc.variables['s_rho'][:]
-            readcheck=0
-        except RuntimeError:   
-            count=count+1
-            print('the '+str(int(count))+' times to read data.')
-        except:
-            sys.exit()
+                return np.nan
+        print('start read data.')
+        while(readcheck==1):  #read data,  if readcheck==1 start loop
+            try:
+                gomofs_lons=nc.variables['lon_rho'][:]
+                gomofs_lats=nc.variables['lat_rho'][:]
+                gomofs_temp=nc.variables['temp'][:]
+                gomofs_h=nc.variables['h'][:]
+                gomofs_rho=nc.variables['s_rho'][:]
+                readcheck,changefile=0,0   #if read data successfully, we do not need to loop
+                print('end read data.')
+            except RuntimeError: 
+                count=count+1
+                if count>5:
+                    if autocheck==True:
+                        return np.nan
+                    while True:
+                        print('it will return nan, if you do not need read again.')
+                        cmd = input("whether need read again(y/n)?：")
+                        if cmd.lower() == "y":
+                            count=1
+                            break
+                        elif cmd.lower() == "n":
+                            cmd2 = input("whether need change file(y/n)?：")
+                            if cmd2.lower()=="y":
+                                date_time=date_time-datetime.timedelta(hours=6)
+                                readcheck,filecheck=0,1
+                                break
+                            else:
+                                print('interrupt read data.')
+                                return np.nan
+                        else:
+                            break
+                time.sleep(20)   #every time to reread data need stop 20s
+                print('the '+str(int(count))+' times to read data.')
+            except:
+                return np.nan
 
     #caculate the index of the nearest four points    
     print('start caculate the nearest four points!')
@@ -131,7 +162,7 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20):
     
     if zl.dist(lat1=lat,lon1=lon,lat2=gomofs_lats[eta_rho][xi_rho],lon2=gomofs_lons[eta_rho][xi_rho])>mindistance:
         print('THE location is out of range')
-        sys.exit()
+        return np.nan
     
     # estimate the bottom depth of point location 
     if eta_rho==0:
@@ -165,15 +196,19 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20):
              [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]],
              [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]]]
     temperature=zl.fitting(points_temp,lat,lon)
+#    temperature=nc.variables['temp'][0][rho_index][eta_rho][xi_rho]
     # if input depth out of the bottom, print the prompt message
     if depth!='bottom':
         if abs(point_h)<abs(depth):
             print ("the depth is out of the bottom:"+str(point_h))
-            sys.exit()
-    return temperature,nc,rho_index,eta_rho,xi_rho,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons
- #   return temperature
+            return np.nan
+    if forcontours==False:
+        return temperature
+    else:
+        return temperature,rho_index,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons
+    
 
-def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=[20, 50,100,150,200,500]):
+def contours_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=[20, 50,100,150,200,500]):
     """Draw contours and isothermal layers on the map
     notice:
     addlon,addlat: edges around point to include in the zoomed in plot
@@ -182,7 +217,10 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     mod_points:do you want to post model grid nodes,if mod_points='yes', print model grid nodes;if other string, skip 
     """
     #prepare the data
-    temperature,nc,rho_index,eta_rho,xi_rho,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons=get_gomofs(date_time,lat,lon,depth)
+    try:
+        temperature,rho_index,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons=get_gomofs(date_time,lat,lon,depth,forcontours=True)
+    except:
+        return 0
     #creat map   
     print('start draw map!')   
     #Create a blank canvas
@@ -260,9 +298,5 @@ def countour_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     x2,y2=map2(lon_point,lat_point)
     ax2.plot(x2,y2,'ro')
     plt.savefig(output_path+'contour_depth_tem_GoMOFs.png',dpi=300)
-    plt.show()
-
-
-    
-
-
+#    plt.show()
+    return 1
