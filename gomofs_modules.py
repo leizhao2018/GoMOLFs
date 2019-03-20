@@ -5,6 +5,7 @@ Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
 update function get_gomofs in download data(correct the part name "start upload data" to donload data)
 add a function(get_gomofs_url_forcast(date,forcastdate=1))
+update the way to get temperature, the new way is faster than before
 @author: leizhao
 """
 import netCDF4
@@ -77,7 +78,8 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
     if the depth is under the water, please must add the marker of '-'
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
     the unit is mile of distance
-    return the temperature of specify location
+    if the fortype isnot 'tempdepth': return the temperature of specify location
+    if the fortype is 'tempdepth': return the temperature and depth.
     """
     if not gomofs_coordinaterange(lat,lon):
         print('lat and lon out of range in gomofs')
