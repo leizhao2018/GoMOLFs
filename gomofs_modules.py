@@ -85,18 +85,15 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
     if not gomofs_coordinaterange(lat,lon):
         print('lat and lon out of range in gomofs')
         return np.nan
-        
     if date_time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range, time start :2018-07-01 00:00:00z')
         return np.nan
     if date_time>datetime.datetime.now()+datetime.timedelta(days=3): #forecast time under 3 days
         print('forecast time under 3 days')
         return np.nan
-   
     #start download data
     forecastdate=date_time  #forecast time equal input date_time
     changefile,filecheck=1,1  #changefile means whether we need to change the file to get data, filecheck means check the file exist or not.
-
     while(changefile==1):  
         count=1
         while(filecheck==1):  #download the data
@@ -170,14 +167,12 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
                 return np.nan
 
     #caculate the index of the nearest four points    
-    #print('start caculate the nearest four points!')
     target_distance=2*zl.dist(lat1=gomofs_lats[0][0],lon1=gomofs_lons[0][0],lat2=gomofs_lats[0][1],lon2=gomofs_lons[0][1])
     eta_rho,xi_rho=zl.find_nd(target=target_distance,lat=lat,lon=lon,lats=gomofs_lats,lons=gomofs_lons)
     
     if zl.dist(lat1=lat,lon1=lon,lat2=gomofs_lats[eta_rho][xi_rho],lon2=gomofs_lons[eta_rho][xi_rho])>mindistance:
         print('THE location is out of range')
         return np.nan
-    
     # estimate the bottom depth of point location 
     if eta_rho==0:
         eta_rho=1
@@ -203,10 +198,7 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
             if abs(distance_h)>=abs(gomofs_rho[k]*point_h-depth):
                 distance_h=gomofs_rho[k]*point_h-depth
                 rho_index=k        
-    
     #estimate the temperature of point location
-   # print('start caculate the temperature of point location!')
-    #nc.variables['temp'][0,rho_index,eta_rho,xi_rho]
     while True:
         points_temp=[[gomofs_lats[eta_rho,xi_rho],gomofs_lons[eta_rho,xi_rho],gomofs_temp[0,rho_index,eta_rho,xi_rho]],
              [gomofs_lats[eta_rho,(xi_rho-1)],gomofs_lons[eta_rho,(xi_rho-1)],gomofs_temp[0,rho_index,eta_rho,(xi_rho-1)]],
@@ -215,14 +207,11 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
              [gomofs_lats[(eta_rho-1),xi_rho],gomofs_lons[(eta_rho-1),xi_rho],gomofs_temp[0,rho_index,(eta_rho-1),xi_rho]]]
         break
     temperature=zl.fitting(points_temp,lat,lon)
-#    temperature=nc.variables['temp'][0][rho_index][eta_rho][xi_rho]
     # if input depth out of the bottom, print the prompt message
     if depth!='bottom':
         if abs(point_h)<abs(depth):
             print ("the depth is out of the bottom:"+str(point_h))
             return np.nan
-
-
     if fortype=='tempdepth':
         return temperature,point_h
     else:
