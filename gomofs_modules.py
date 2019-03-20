@@ -5,7 +5,9 @@ Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
 update function get_gomofs in download data(correct the part name "start upload data" to donload data)
 add a function(get_gomofs_url_forcast(date,forcastdate=1))
-update the way to get temperature, the new way is faster than before
+
+march 20
+update a way to get gomofs temperature, tht faster than before
 @author: leizhao
 """
 import netCDF4
@@ -78,8 +80,7 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
     if the depth is under the water, please must add the marker of '-'
     input time,lat,lon,depth return the temperature of specify location (or return temperature,nc,rho_index,ocean_time_index)
     the unit is mile of distance
-    if the fortype isnot 'tempdepth': return the temperature of specify location
-    if the fortype is 'tempdepth': return the temperature and depth.
+    return the temperature of specify location
     """
     if not gomofs_coordinaterange(lat,lon):
         print('lat and lon out of range in gomofs')
@@ -125,20 +126,22 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
                     return np.nan
             except:
                 return np.nan
-        print('start read data.')
+       # print('start read data.')
         while(readcheck==1):  #read data,  if readcheck==1 start loop
             try:
                 while True:
-                    print('connecting the web.')
+                    #print('connecting the web.')
                     if zl.isConnected(address=url):
                         break
                     print('check the website is well or internet is connected?')
                     time.sleep(5)
                 gomofs_lons=nc.variables['lon_rho'][:]
                 gomofs_lats=nc.variables['lat_rho'][:]
-                gomofs_rho=nc.variables['s_rho'][:]
+                gomofs_rho=nc.variables['s_rho']
+                gomofs_h=nc.variables['h']
+                gomofs_temp=nc.variables['temp']
                 readcheck,changefile=0,0   #if read data successfully, we do not need to loop
-                print('end read data.')
+               # print('end read data.')
             except RuntimeError: 
                 count=count+1
                 if count>8:
@@ -167,7 +170,7 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
                 return np.nan
 
     #caculate the index of the nearest four points    
-    print('start caculate the nearest four points!')
+    #print('start caculate the nearest four points!')
     target_distance=2*zl.dist(lat1=gomofs_lats[0][0],lon1=gomofs_lons[0][0],lat2=gomofs_lats[0][1],lon2=gomofs_lons[0][1])
     eta_rho,xi_rho=zl.find_nd(target=target_distance,lat=lat,lon=lon,lats=gomofs_lats,lons=gomofs_lons)
     
@@ -182,13 +185,13 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
         eta_rho=len(gomofs_lats)-2
     if xi_rho==len(gomofs_lats[0])-1:
         eta_rho=len(gomofs_lats[0])-2
-    print('start caculate the bottom depth of point location!') 
+   # print('start caculate the bottom depth of point location!') 
     while True:
-        points_h=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],nc.variables['h'][eta_rho][xi_rho]],
-             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],nc.variables['h'][eta_rho][xi_rho-1]],
-             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],nc.variables['h'][eta_rho][xi_rho+1]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['h'][eta_rho-1][xi_rho]],
-             [gomofs_lats[eta_rho+1][xi_rho],gomofs_lons[eta_rho+1][xi_rho],nc.variables['h'][eta_rho+1][xi_rho]]]
+        points_h=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],gomofs_h[eta_rho,xi_rho]],
+             [gomofs_lats[eta_rho,(xi_rho-1)],gomofs_lons[eta_rho,(xi_rho-1)],gomofs_h[eta_rho,(xi_rho-1)]],
+             [gomofs_lats[eta_rho,(xi_rho+1)],gomofs_lons[eta_rho,(xi_rho+1)],gomofs_h[eta_rho,(xi_rho+1)]],
+             [gomofs_lats[(eta_rho-1),xi_rho],gomofs_lons[(eta_rho-1),xi_rho],gomofs_h[(eta_rho-1),xi_rho]],
+             [gomofs_lats[(eta_rho+1),xi_rho],gomofs_lons[(eta_rho+1),xi_rho],gomofs_h[(eta_rho+1),xi_rho]]]
         break
     point_h=zl.fitting(points_h,lat,lon) 
     # caculate the rho index
@@ -202,13 +205,14 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
                 rho_index=k        
     
     #estimate the temperature of point location
-    print('start caculate the temperature of point location!')
+   # print('start caculate the temperature of point location!')
+    #nc.variables['temp'][0,rho_index,eta_rho,xi_rho]
     while True:
-        points_temp=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],nc.variables['temp'][0][rho_index][eta_rho][xi_rho]],
-             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],nc.variables['temp'][0][rho_index][eta_rho][xi_rho-1]],
-             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],nc.variables['temp'][0][rho_index][eta_rho][xi_rho+1]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['temp'][0][rho_index][eta_rho-1][xi_rho]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['temp'][0][rho_index][eta_rho-1][xi_rho]]]
+        points_temp=[[gomofs_lats[eta_rho,xi_rho],gomofs_lons[eta_rho,xi_rho],gomofs_temp[0,rho_index,eta_rho,xi_rho]],
+             [gomofs_lats[eta_rho,(xi_rho-1)],gomofs_lons[eta_rho,(xi_rho-1)],gomofs_temp[0,rho_index,eta_rho,(xi_rho-1)]],
+             [gomofs_lats[eta_rho,(xi_rho+1)],gomofs_lons[eta_rho,(xi_rho+1)],gomofs_temp[0,rho_index,eta_rho,(xi_rho+1)]],
+             [gomofs_lats[(eta_rho-1),xi_rho],gomofs_lons[(eta_rho-1),xi_rho],gomofs_temp[0,rho_index,(eta_rho-1),xi_rho]],
+             [gomofs_lats[(eta_rho-1),xi_rho],gomofs_lons[(eta_rho-1),xi_rho],gomofs_temp[0,rho_index,(eta_rho-1),xi_rho]]]
         break
     temperature=zl.fitting(points_temp,lat,lon)
 #    temperature=nc.variables['temp'][0][rho_index][eta_rho][xi_rho]
