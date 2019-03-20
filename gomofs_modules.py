@@ -5,7 +5,6 @@ Created on Mon Feb 25 15:37:42 2019
 get the data from GoMOFs
 update function get_gomofs in download data(correct the part name "start upload data" to donload data)
 add a function(get_gomofs_url_forcast(date,forcastdate=1))
-march 13:update function get_gomofs in download data
 @author: leizhao
 """
 import netCDF4
@@ -71,7 +70,7 @@ def get_gomofs_url_forcast(date,forcastdate=True):
     +ymdh[:6]+'/nos.gomofs.fields.'+fstr+'.'+ymdh[:8]+'.'+tstr+'.nc'
     return url
 
-def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours=False):
+def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fortype='temperature'):
     """
     the format time(GMT) is: datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
     lat and lon use decimal degrees
@@ -80,6 +79,10 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
     the unit is mile of distance
     return the temperature of specify location
     """
+    if not gomofs_coordinaterange(lat,lon):
+        print('lat and lon out of range in gomofs')
+        return np.nan
+        
     if date_time<datetime.datetime.strptime('2018-07-01 00:00:00','%Y-%m-%d %H:%M:%S'):
         print('Time out of range, time start :2018-07-01 00:00:00z')
         return np.nan
@@ -114,6 +117,7 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
                     date_time=date_time-datetime.timedelta(hours=6)
                     if (forecastdate-date_time)>datetime.timedelta(days=3):  #every file only have 3 days data.
                         print('please check the website or file is exist!')
+                        print(url)
                         return np.nan
                 except:
                     return np.nan
@@ -122,16 +126,20 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
         print('start read data.')
         while(readcheck==1):  #read data,  if readcheck==1 start loop
             try:
+                while True:
+                    print('connecting the web.')
+                    if zl.isConnected(address=url):
+                        break
+                    print('check the website is well or internet is connected?')
+                    time.sleep(5)
                 gomofs_lons=nc.variables['lon_rho'][:]
                 gomofs_lats=nc.variables['lat_rho'][:]
-                gomofs_temp=nc.variables['temp'][:]
-                gomofs_h=nc.variables['h'][:]
                 gomofs_rho=nc.variables['s_rho'][:]
                 readcheck,changefile=0,0   #if read data successfully, we do not need to loop
                 print('end read data.')
             except RuntimeError: 
                 count=count+1
-                if count>5:
+                if count>8:
                     if autocheck==True:
                         return np.nan
                     while True:
@@ -173,11 +181,13 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
     if xi_rho==len(gomofs_lats[0])-1:
         eta_rho=len(gomofs_lats[0])-2
     print('start caculate the bottom depth of point location!') 
-    points_h=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],gomofs_h[eta_rho][xi_rho]],
-             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],gomofs_h[eta_rho][xi_rho-1]],
-             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],gomofs_h[eta_rho][xi_rho+1]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_h[eta_rho-1][xi_rho]],
-             [gomofs_lats[eta_rho+1][xi_rho],gomofs_lons[eta_rho+1][xi_rho],gomofs_h[eta_rho+1][xi_rho]]]
+    while True:
+        points_h=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],nc.variables['h'][eta_rho][xi_rho]],
+             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],nc.variables['h'][eta_rho][xi_rho-1]],
+             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],nc.variables['h'][eta_rho][xi_rho+1]],
+             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['h'][eta_rho-1][xi_rho]],
+             [gomofs_lats[eta_rho+1][xi_rho],gomofs_lons[eta_rho+1][xi_rho],nc.variables['h'][eta_rho+1][xi_rho]]]
+        break
     point_h=zl.fitting(points_h,lat,lon) 
     # caculate the rho index
     if depth=='bottom':
@@ -191,11 +201,13 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
     
     #estimate the temperature of point location
     print('start caculate the temperature of point location!')
-    points_temp=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],gomofs_temp[0][rho_index][eta_rho][xi_rho]],
-             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],gomofs_temp[0][rho_index][eta_rho][xi_rho-1]],
-             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],gomofs_temp[0][rho_index][eta_rho][xi_rho+1]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]],
-             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],gomofs_temp[0][rho_index][eta_rho-1][xi_rho]]]
+    while True:
+        points_temp=[[gomofs_lats[eta_rho][xi_rho],gomofs_lons[eta_rho][xi_rho],nc.variables['temp'][0][rho_index][eta_rho][xi_rho]],
+             [gomofs_lats[eta_rho][xi_rho-1],gomofs_lons[eta_rho][xi_rho-1],nc.variables['temp'][0][rho_index][eta_rho][xi_rho-1]],
+             [gomofs_lats[eta_rho][xi_rho+1],gomofs_lons[eta_rho][xi_rho+1],nc.variables['temp'][0][rho_index][eta_rho][xi_rho+1]],
+             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['temp'][0][rho_index][eta_rho-1][xi_rho]],
+             [gomofs_lats[eta_rho-1][xi_rho],gomofs_lons[eta_rho-1][xi_rho],nc.variables['temp'][0][rho_index][eta_rho-1][xi_rho]]]
+        break
     temperature=zl.fitting(points_temp,lat,lon)
 #    temperature=nc.variables['temp'][0][rho_index][eta_rho][xi_rho]
     # if input depth out of the bottom, print the prompt message
@@ -203,11 +215,13 @@ def get_gomofs(date_time,lat,lon,depth,mindistance=20,autocheck=True,forcontours
         if abs(point_h)<abs(depth):
             print ("the depth is out of the bottom:"+str(point_h))
             return np.nan
-    if forcontours==False:
-        return temperature
+
+
+    if fortype=='tempdepth':
+        return temperature,point_h
     else:
-        return temperature,rho_index,gomofs_temp,gomofs_h,gomofs_lats,gomofs_lons
-    
+        return temperature
+
 
 def contours_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081,depth='bottom',addlon=.3,addlat=.3,mod_points='yes',depth_contours_interval=[20, 50,100,150,200,500]):
     """Draw contours and isothermal layers on the map
@@ -301,3 +315,12 @@ def contours_depth_temp_gomfs(output_path,date_time,lat=41.784712,lon=-69.231081
     plt.savefig(output_path+'contour_depth_tem_GoMOFs.png',dpi=300)
 #    plt.show()
     return 1
+def gomofs_coordinaterange(lat,lon):
+    f1=-0.7490553378867058*lat-lon-40.98355685763821<=0
+    f2=-0.5967392371008197*lat-lon-36.300860518805024>=0
+    f3=2.695505391925802*lat-lon-188.76889647321198<=0
+    f4=2.689125428655328*lat-lon-173.5017523298927>=0
+    if f1 and f2 and f3 and f4:
+        return True
+    else:
+        return False
