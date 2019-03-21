@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Feb 25 15:37:42 2019
-get the data from GoMOFs
-update function get_gomofs in download data(correct the part name "start upload data" to donload data)
-add a function(get_gomofs_url_forcast(date,forcastdate=1))
+get the data from Gulf of Maine Ocean Forecast System with function get_gomofs
+@author: Lei Zhao with some help from Vitalli and JiM
 
-march 20
-update a way to get gomofs temperature, tht faster than before
-@author: leizhao
+Modification: March 15, 2019
+- added a function(get_gomofs_url_forcast(date,forcastdate=1))
+
+Modification: March 20, 2019
+- updated a way to get gomofs temperature, tht faster than before
 """
 import netCDF4
 import datetime
@@ -28,8 +29,8 @@ import time
 
 def get_gomofs_url(date):
     """
-    the format of date is:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
-    input date and return the url of data
+    the format of date is a datetime such as datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
+    returns the url of data
     """
 #    print('start calculate the url!') 
     date=date+datetime.timedelta(hours=4.5)
@@ -48,12 +49,12 @@ def get_gomofs_url(date):
     +date_str[:6]+'/nos.gomofs.fields.'+nstr+'.'+date_str[:8]+'.'+tstr+'.nc'
     return url
 
-def get_gomofs_url_forcast(date,forcastdate=True):
+def get_gomofs_url_forecast(date,forecastdate=True):
     """
-    the date use to choose file
-    the format of date is GMT TIME:datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
-    forcastdate like date or True
-    input date and return the url of data
+    same as get_gomofs_url but gets the forecast file instead of the nowcast
+    where "date" is a datatime like datetime.datetime(2019, 2, 27, 11, 56, 51, 666857)
+    forecastdate like date or True
+    return the url of data
     """
     if forcastdate==True:  #if forcastdate is True: default the forcast date equal to the time of choose file.
         forcastdate=date
@@ -103,13 +104,13 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20,autocheck=True,fo
                     nc=netCDF4.Dataset(str(url))
                     print('download nowcast data.')
                 else:
-                    url=get_gomofs_url_forcast(date_time,forecastdate)
+                    url=get_gomofs_url_forecast(date_time,forecastdate)
                     nc=netCDF4.Dataset(str(url))
                     print('download forecast data.')
                 filecheck,readcheck=0,1      # if the file is there, filecheck=0,readcheck use to check the file whether read successfully               
             except OSError:
                 try:
-                    url=get_gomofs_url_forcast(date_time,forecastdate)
+                    url=get_gomofs_url_forecast(date_time,forecastdate)
                     nc=netCDF4.Dataset(str(url))
                     print('download forecast data.')
                     filecheck,readcheck=0,1  
